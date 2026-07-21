@@ -1,0 +1,4 @@
+interface:
+  display_name: "Harness-Explore"
+  short_description: "用 Codex 源码学懂 Agent Harness"
+  default_prompt: "Use $harness-explore to diagnose my Agent/Harness understanding and start an adaptive course."
