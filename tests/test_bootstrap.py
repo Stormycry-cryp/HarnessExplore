@@ -147,6 +147,57 @@ cli.chmod(0o755)
             self.assertNotIn(call[0], ('curl', 'npm'))
             self.assertFalse(call[0] == 'git' and any(a in call for a in ('fetch', 'clone')))
 
+    def test_true_partial_clone_supports_offline_status(self):
+        # file:// honors blob filters; a plain local path silently ignores them.
+        self.git('-C', str(self.upstream), 'config', 'uploadpack.allowFilter', 'true')
+        (self.upstream / '.gitignore').write_text('node_modules/\n')
+        excluded = self.upstream / 'not-selected.txt'
+        excluded.write_text('This blob must remain outside the sparse download.\n')
+        self.git('-C', str(self.upstream), 'add', '.gitignore', excluded.name)
+        self.commit('partial-clone fixture')
+        commit = self.git('-C', str(self.upstream), 'rev-parse', 'HEAD').stdout.strip()
+        ignored_blob = self.git('-C', str(self.upstream), 'rev-parse', 'HEAD:.gitignore').stdout.strip()
+        excluded_blob = self.git('-C', str(self.upstream), 'rev-parse', 'HEAD:not-selected.txt').stdout.strip()
+        self.env['FIXTURE_URL'] = self.upstream.as_uri()
+        self.stub('git', '''a = sys.argv[1:]
+if os.environ.get('REQUIRE_NO_LAZY_FETCH') == '1' and os.environ.get('GIT_NO_LAZY_FETCH') != '1':
+    sys.exit(91)
+# Pass a process-local URL rewrite to online Git and its lazy-fetch children.
+# Keep remote get-url unmodified so bootstrap verifies the actual official origin.
+if os.environ.get('GIT_NO_LAZY_FETCH') != '1' and not ('remote' in a and 'get-url' in a):
+    a = ['-c', 'url.' + os.environ['FIXTURE_URL'] + '.insteadOf=https://github.com/openai/codex.git'] + a
+sys.exit(subprocess.run([os.environ['REAL_GIT']] + a).returncode)
+''')
+        online = self.run_bootstrap('--skip-cli')
+        self.assertNotIn('filtering not recognized', online.stderr)
+        self.assertNotIn('--filter is ignored', online.stderr)
+        self.assertEqual(self.git('-C', str(self.source), 'config', '--get', 'remote.origin.promisor').stdout.strip(), 'true')
+        self.assertEqual(self.git('-C', str(self.source), 'config', '--get', 'remote.origin.partialclonefilter').stdout.strip(), 'blob:none')
+        self.assertEqual((self.source / '.gitignore').read_text(), 'node_modules/\n')
+        no_fetch_env = os.environ.copy()
+        no_fetch_env['GIT_NO_LAZY_FETCH'] = '1'
+        blobs = subprocess.run([REAL_GIT, '-C', str(self.source), 'rev-list', '--objects', '--all', '--missing=print'],
+                               env=no_fetch_env, text=True, capture_output=True, check=True)
+        self.assertIn('?' + excluded_blob, blobs.stdout, 'fixture must contain an undownloaded blob')
+        self.assertNotIn('?' + ignored_blob, blobs.stdout, '.gitignore must be downloaded online')
+        self.log.write_text('')
+        self.env['REQUIRE_NO_LAZY_FETCH'] = '1'
+        # Any accidental offline transport is blocked, even if a child bypasses the stub.
+        self.env.update(GIT_CONFIG_COUNT='1', GIT_CONFIG_KEY_0='protocol.allow',
+                        GIT_CONFIG_VALUE_0='never', GIT_TRACE=str(self.root / 'offline-git.trace'))
+        offline = self.run_bootstrap('--offline', '--skip-cli')
+        self.assertNotIn('lazy fetching disabled', offline.stderr)
+        self.assertNotIn('could not fetch', offline.stderr)
+        self.assertEqual(self.fields()['source_commit'], commit)
+        self.assertEqual(self.fields()['source_state'], 'cached_verified')
+        for call in self.calls():
+            self.assertNotIn(call[0], ('curl', 'npm'))
+            self.assertFalse(call[0] == 'git' and any(a in call for a in ('fetch', 'clone')))
+        trace = (self.root / 'offline-git.trace').read_text()
+        self.assertNotIn('remote-https', trace)
+        self.assertNotIn('upload-pack', trace)
+        self.assertNotIn(' fetch ', trace)
+
     def test_commit_and_tag_pin_actual_sha(self):
         for ref in (self.first, 'v1'):
             self.env['HARNESS_EXPLORE_SOURCE_REF'] = ref

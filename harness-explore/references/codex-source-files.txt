@@ -1,3 +1,4 @@
+.gitignore
 README.md
 codex-rs/core/src/agents_md.rs
 codex-rs/core/src/compact.rs
