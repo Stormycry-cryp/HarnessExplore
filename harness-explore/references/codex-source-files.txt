@@ -1,8 +1,8 @@
-AGENTS.md
+.gitignore
 README.md
 codex-rs/core/src/agents_md.rs
 codex-rs/core/src/compact.rs
-codex-rs/core/src/compact_remote.rs
+codex-rs/core/src/compact_remote_v2.rs
 codex-rs/core/src/config/permissions.rs
 codex-rs/core/src/context_manager/history.rs
 codex-rs/core/src/context_manager/mod.rs
@@ -19,7 +19,8 @@ codex-rs/core/src/tools/handlers/mcp.rs
 codex-rs/core/src/tools/handlers/multi_agents.rs
 codex-rs/core/src/tools/handlers/plan.rs
 codex-rs/core/src/tools/handlers/request_permissions.rs
-codex-rs/core/src/tools/handlers/shell.rs
+codex-rs/core/src/tools/handlers/shell_spec.rs
+codex-rs/core/src/tools/handlers/unified_exec/exec_command.rs
 codex-rs/core/src/tools/orchestrator.rs
 codex-rs/core/src/tools/parallel.rs
 codex-rs/core/src/tools/registry.rs
@@ -27,8 +28,7 @@ codex-rs/core/src/tools/router.rs
 codex-rs/core/src/tools/sandboxing.rs
 codex-rs/core/src/tools/spec_plan.rs
 codex-rs/core/src/tools/tool_dispatch_trace.rs
-codex-rs/core/prompt_with_apply_patch_instructions.md
-codex-rs/docs/codex_mcp_interface.md
+codex-rs/protocol/src/prompts/base_instructions/default.md
 codex-rs/memories/README.md
 codex-rs/memories/read/src/citations.rs
 codex-rs/memories/write/src/guard.rs
@@ -39,3 +39,12 @@ docs/config.md
 docs/execpolicy.md
 docs/sandbox.md
 docs/skills.md
+codex-rs/tools/src/tool_executor.rs
+codex-rs/app-server/README.md
+sdk/typescript/README.md
+sdk/typescript/src/codex.ts
+sdk/typescript/src/exec.ts
+sdk/typescript/src/thread.ts
+codex-rs/core/src/tools/handlers/multi_agents_v2.rs
+codex-rs/core/src/session/rollout_reconstruction.rs
+codex-rs/otel/README.md
